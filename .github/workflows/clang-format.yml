@@ -19,5 +19,5 @@ jobs:
         env:
           BASE_REF: ${{ github.event.pull_request.base.sha }}
         run: |
-          ./run-clang-format.sh "$BASE_REF"
+          ./run-clang-format.sh "$(git merge-base HEAD "$BASE_REF")"
           git diff --exit-code
