@@ -408,7 +408,7 @@ def audit_release(
                 validate_title(installation, matches[0], catalog=catalog)
                 adapter = matches[0].get("input_adapter")
                 if adapter is not None:
-                    validate_adapter(root, matches[0])
+                    validate_adapter(installation, matches[0])
                     relative = adapter["code_copies"]["path"]
                     relative = packaged(relative)
                     if declared.get(relative, {}).get("role") != "input_copy_adapter":

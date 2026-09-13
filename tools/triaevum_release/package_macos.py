@@ -100,7 +100,7 @@ def _release_role(relative: str) -> str:
     if relative == "Contents/MacOS/TriAevum": return "macos_launcher"
     if relative == "Contents/Resources/forge/TriAevumForge": return "forge_executable"
     if relative in {"Contents/Info.plist", "Contents/Resources/macos-build.json", "Contents/_CodeSignature/CodeResources"}: return "macos_metadata"
-    if relative in {"Contents/Resources/LICENSE", "Contents/Resources/LICENSE_SCOPE.md", "Contents/Resources/THIRD_PARTY_NOTICES.md"}: return "macos_notice"
+    if relative in {"Contents/Resources/LICENSE", "Contents/Resources/LICENSE_SCOPE.md", "Contents/Resources/THIRD_PARTY_NOTICES.md"} or relative.startswith("Contents/Resources/LICENSES/"): return "macos_notice"
     if relative == runtime + "lib/MoltenVK_icd.json": return "macos_icd"
     if path == "TriAevum": return "runtime_executable"
     if path == "forge/oot3d_game_module.dylib": return "forge_runtime_module"
@@ -162,7 +162,7 @@ def main() -> int:
     shutil.copytree(build / "installation/recipes", runtime / "recipes")
     shutil.copytree(build / "installation/resources", runtime / "resources")
     shutil.copytree(build / "installation/forge/shader-corpus", runtime / "forge/shader-corpus")
-    shutil.copytree(build / "forge-dist/TriAevumForge", resources / "forge", symlinks=True)
+    shutil.copytree(build / "forge-dist/TriAevumForge", resources / "forge")
     reference = build / "qualified-inputs"
     if not reference.is_dir():
         raise ValueError("Current qualified release inputs are missing; rerun prepare_macos_inputs")
@@ -174,6 +174,7 @@ def main() -> int:
     for name in ("README.md", "LICENSE_SCOPE.md", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md", "LICENSE"):
         _copy(root / name, runtime / name)
     shutil.copytree(root / "LICENSES", runtime / "LICENSES")
+    _copy(root / "tools/oot3d/third_party/azahar_audio/LICENSE.txt", runtime / "LICENSES/GPL-2.0-or-later.txt")
     for document in ("TRIAEVUM_PRECOMPILED_RELEASE.md", "OOT3D_MACOS_PORT.md", "TRIAEVUM_CONTRIBUTIONS.md"):
         _copy(root / "docs" / document, runtime / "docs" / document)
     inventory = bundle_libraries(runtime)
