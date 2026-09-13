@@ -116,11 +116,13 @@ bundle-local plugin on every run.
 
 Portable PICA and renderer-pass shaders are prepared through that shared flow.
 The current Mac renderer is direct Vulkan through MoltenVK with NRI, CACAO and
-SSSR disabled, and it intentionally has no `device_pipeline_preparation`
-catalog record: the NRI-only headless pipeline helper cannot prewarm this
-backend. Forge therefore reports no device pipeline prewarm rather than
-claiming that portable shader presence is a GPU-pipeline cache. Driver and
-pipeline caches remain private to the Mac installation.
+SSSR disabled. Its catalog carries an explicit `direct_vulkan_no_nri_preparer`
+device-pipeline contract: the NRI-only headless helper cannot prewarm this
+backend. Forge writes an `unsupported_backend` receipt rather than reporting a
+failed job or claiming that portable shader presence is a GPU-pipeline cache.
+Driver and pipeline caches remain private to the Mac installation. Supporting
+this step requires an NRI-compatible Mac renderer and is outside this
+experimental bootstrap.
 
 The asynchronous grass admission is explicitly Mac-scoped. A scene can appear
 before all immutable grass placements finish, so dense grass may pop in over
