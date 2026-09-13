@@ -181,7 +181,7 @@ def install_private_title(
     staging = data_root / f".rom-import-{uuid.uuid4().hex}"
     try:
         report("preflight", "Checking the playable runtime and precompiled title catalog...")
-        forge.query_product(runtime_path())
+        forge.query_product(runtime_path(), renderer=forge.runtime_renderer())
         root = runtime_path().parent
         catalog = load_catalog(root)
         report("extract", "Extracting native title data from the decrypted ROM...")

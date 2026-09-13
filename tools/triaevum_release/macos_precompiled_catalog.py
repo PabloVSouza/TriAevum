@@ -71,6 +71,6 @@ def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
         item.pop("device_pipeline_preparation", None)
         for record in [item["renderer_shader_preparation"]["compiler"]]:
             checked_file(installation, record)
-    query_product(runtime, plugin=plugin)
+    query_product(runtime, plugin=plugin, renderer="vulkan")
     atomic_write_json(installation / CATALOG, result)
     return result

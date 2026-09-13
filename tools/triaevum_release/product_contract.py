@@ -38,7 +38,8 @@ def validate_product_info(info: dict[str, Any], source_commit: str = "", *, rend
         raise ValueError("Runtime defaults do not enable visual interpolation x2")
 
 
-def query_product(executable: Path, source_commit: str = "", *, plugin: Path | None = None) -> dict[str, Any]:
+def query_product(executable: Path, source_commit: str = "", *, plugin: Path | None = None,
+                  renderer: str = "nri") -> dict[str, Any]:
     executable = executable.resolve(strict=True)
     try:
         result = run_native(
@@ -57,7 +58,7 @@ def query_product(executable: Path, source_commit: str = "", *, plugin: Path | N
         raise ValueError(f"Cannot query the playable runtime: {exc}") from exc
     if not isinstance(info, dict):
         raise ValueError("Runtime product information is not an object")
-    validate_product_info(info, source_commit)
+    validate_product_info(info, source_commit, renderer=renderer)
     if plugin is not None and info.get("private_title_loaded") is not True:
         raise ValueError("The selected private title failed its native ABI preflight")
     return {"runtime_sha256": sha256_file(executable), "product": info}
