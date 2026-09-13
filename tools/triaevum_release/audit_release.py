@@ -384,35 +384,49 @@ def audit_release(
         if roles_seen & {"forge_tool", "forge_toolchain_setup", "forge_link_library", "forge_tool_resource", "forge_clang_header"}:
             reject("user precompiled release must not include compiler/SDK acquisition payloads")
         try:
-            catalog = load_catalog(root)
-            validate_bundled_corpus(root, catalog, declared)
+            installation = root / Path(platform.runtime).parent
+            prefix = installation.relative_to(root).as_posix()
+            if prefix == ".":
+                prefix = ""
+            def packaged(path: str) -> str:
+                return f"{prefix}/{path}" if prefix else path
+            catalog = load_catalog(installation)
+            internal_declared = {
+                path.removeprefix(prefix + "/") if prefix else path: item
+                for path, item in declared.items()
+                if not prefix or path.startswith(prefix + "/")
+            }
+            validate_bundled_corpus(installation, catalog, internal_declared)
             if catalog_platform(catalog) != platform:
                 raise ValueError("Catalog target differs from release target")
-            recipes = load_json_object(root / "recipes/oot3d.json")["recipes"]
-            expected_title_paths = {CATALOG}
+            recipes = load_json_object(installation / "recipes/oot3d.json")["recipes"]
+            expected_title_paths = {packaged(CATALOG)}
             for title in catalog["titles"]:
                 matches = [recipe for recipe in recipes if recipe["id"] == title["recipe"]]
                 if len(matches) != 1:
                     raise ValueError("Catalog revision is absent or ambiguous in supported recipes")
-                validate_title(root, matches[0], catalog=catalog)
+                validate_title(installation, matches[0], catalog=catalog)
                 adapter = matches[0].get("input_adapter")
                 if adapter is not None:
                     validate_adapter(root, matches[0])
                     relative = adapter["code_copies"]["path"]
+                    relative = packaged(relative)
                     if declared.get(relative, {}).get("role") != "input_copy_adapter":
                         raise ValueError("COPY adapter lacks its explicit release role")
                     adapter_paths.add(relative)
-                if declared.get(title["plugin"]["path"], {}).get("role") != "precompiled_title":
+                title_path = packaged(title["plugin"]["path"])
+                if declared.get(title_path, {}).get("role") != "precompiled_title":
                     raise ValueError("Title DLL lacks its explicit precompiled role")
-                expected_title_paths.add(title["plugin"]["path"])
+                expected_title_paths.add(title_path)
                 sources = title.get("sources", [])
                 if len(sources) != 2:
                     raise ValueError("Title requires translated and build corresponding source")
                 for source_record, role in zip(sources, ("translated_title_source", "title_build_source")):
-                    archive = checked_file(root, source_record)
-                    if declared.get(source_record["path"], {}).get("role") != role:
+                    archive = checked_file(installation, source_record)
+                    source_path = packaged(source_record["path"])
+                    if declared.get(source_path, {}).get("role") != role:
                         raise ValueError("Title source lacks its explicit role")
-                    expected_title_paths.add(source_record["path"])
+                    expected_title_paths.add(source_path)
                     with zipfile.ZipFile(archive) as source_zip:
                         metadata = json.loads(source_zip.read("TITLE_SOURCE_MANIFEST.json" if role == "translated_title_source" else "SOURCE_ARCHIVE_MANIFEST.json"))
                         if metadata.get("build_source_commit" if role == "translated_title_source" else "source_commit") != title["build_source_commit"]:

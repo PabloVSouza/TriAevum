@@ -10,6 +10,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from .audit_release import audit_release
+from .common import atomic_write_json
+from .macos_precompiled_catalog import create_catalog
+from .source_archive import create_source_archive
+
 
 def run(*args: str) -> str:
     return subprocess.check_output(args, text=True).strip()
@@ -84,6 +89,56 @@ def bundle_libraries(runtime: Path) -> list[dict]:
             for name, source in sorted(copied.items())]
 
 
+def _copy(source: Path, destination: Path) -> None:
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, destination)
+
+
+def _release_role(relative: str) -> str:
+    runtime = "Contents/Resources/runtime/"
+    path = relative.removeprefix(runtime)
+    if relative == "Contents/MacOS/TriAevum": return "macos_launcher"
+    if relative == "Contents/Resources/forge/TriAevumForge": return "forge_executable"
+    if relative in {"Contents/Info.plist", "Contents/Resources/macos-build.json", "Contents/_CodeSignature/CodeResources"}: return "macos_metadata"
+    if relative in {"Contents/Resources/LICENSE", "Contents/Resources/LICENSE_SCOPE.md", "Contents/Resources/THIRD_PARTY_NOTICES.md"}: return "macos_notice"
+    if relative == runtime + "lib/MoltenVK_icd.json": return "macos_icd"
+    if path == "TriAevum": return "runtime_executable"
+    if path == "forge/oot3d_game_module.dylib": return "forge_runtime_module"
+    if path == "forge/oot3d_native_pica_aot_compiler": return "shader_preparation_tool"
+    if path == "recipes/precompiled-titles.json": return "precompiled_catalog"
+    if path.startswith("recipes/adapters/"): return "input_copy_adapter"
+    if path.startswith("recipes/"): return "revision_recipe"
+    if path == "forge/shader-corpus/portable.o3ps": return "portable_shader_corpus"
+    if path.startswith("forge/shader-corpus/pipelines-"): return "portable_pipeline_recipes"
+    if path.startswith("titles/") and path.endswith(".dylib"): return "precompiled_title"
+    if path.startswith("source/titles/") and path.endswith("-translated.zip"): return "translated_title_source"
+    if path.startswith("source/titles/") and path.endswith("-build.zip"): return "title_build_source"
+    if path.startswith("source/") and path.endswith(".zip"): return "corresponding_source"
+    if path.startswith("forge/") and "/_internal/" not in path: return "forge_runtime_module"
+    if relative.startswith("Contents/Resources/forge/_internal/"): return "forge_frozen_resource"
+    if path.endswith(".dylib"): return "runtime_library"
+    if path.startswith("resources/"): return "title_neutral_resource"
+    if path.startswith("LICENSES/") or path == "LICENSE": return "license"
+    return "documentation"
+
+
+def _write_release_manifest(app: Path, *, version: str, source_commit: str) -> None:
+    files = []
+    for path in sorted((item for item in app.rglob("*") if item.is_file()), key=lambda item: item.as_posix()):
+        relative = path.relative_to(app).as_posix()
+        files.append({"path": relative, "role": _release_role(relative),
+                      "bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
+    atomic_write_json(app / "release-manifest.json", {
+        "format": "triaevum_public_release_manifest_v1",
+        "release": {"name": "TriAevum", "version": version,
+                    "target": "aarch64-apple-darwin", "source_commit": source_commit,
+                    "distribution_model": "precompiled_title_rom_import_v1",
+                    "contains_title_code": True, "contains_title_content": False,
+                    "proprietary_sdk_included": False, "redistributable": True,
+                    "qualification": "candidate"},
+        "files": files})
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build", type=Path, required=True)
@@ -103,12 +158,30 @@ def main() -> int:
     runtime.mkdir(parents=True)
     shutil.copy2(build / "TriAevum", runtime / "TriAevum")
     shutil.copy2(args.title, runtime / "triaevum_title_aot.dylib")
-    shutil.copy2(build / "oot3d_native_pica_aot_compiler", runtime / "oot3d_native_pica_aot_compiler")
+    _copy(build / "oot3d_native_pica_aot_compiler", runtime / "forge/oot3d_native_pica_aot_compiler")
     shutil.copytree(build / "installation/recipes", runtime / "recipes")
     shutil.copytree(build / "installation/resources", runtime / "resources")
     shutil.copytree(build / "installation/forge/shader-corpus", runtime / "forge/shader-corpus")
     shutil.copytree(build / "forge-dist/TriAevumForge", resources / "forge", symlinks=True)
+    reference = build / "qualified-inputs"
+    if not reference.is_dir():
+        raise ValueError("Current qualified release inputs are missing; rerun prepare_macos_inputs")
+    shutil.copytree(reference / "source", runtime / "source")
+    reference_catalog = json.loads((reference / "recipes/precompiled-titles.json").read_text())
+    plugin_path = runtime / "titles" / str(reference_catalog["titles"][0]["plugin"]["path"]).split("titles/", 1)[1].replace(".dll", ".dylib")
+    _copy(args.title, plugin_path)
+    _copy(args.title, runtime / "forge/oot3d_game_module.dylib")
+    for name in ("README.md", "LICENSE_SCOPE.md", "THIRD_PARTY_NOTICES.md", "SOURCE_OFFER.md", "LICENSE"):
+        _copy(root / name, runtime / name)
+    shutil.copytree(root / "LICENSES", runtime / "LICENSES")
+    for document in ("TRIAEVUM_PRECOMPILED_RELEASE.md", "OOT3D_MACOS_PORT.md", "TRIAEVUM_CONTRIBUTIONS.md"):
+        _copy(root / "docs" / document, runtime / "docs" / document)
     inventory = bundle_libraries(runtime)
+    source_commit = run("git", "rev-parse", "HEAD")
+    create_source_archive(root, build / "macos-runtime-source.zip", source_commit=source_commit)
+    _copy(build / "macos-runtime-source.zip", runtime / "source/TriAevum-source.zip")
+    create_catalog(reference, runtime, plugin_path, source_commit=source_commit,
+                   shader_compiler=runtime / "forge/oot3d_native_pica_aot_compiler")
     minimum = run("sw_vers", "-productVersion")
     with (contents / "Info.plist").open("wb") as stream:
         plistlib.dump({"CFBundleName": "TriAevum", "CFBundleDisplayName": "TriAevum",
@@ -123,15 +196,19 @@ def main() -> int:
     shutil.copytree(root / "LICENSES", resources / "LICENSES")
     (resources / "macos-build.json").write_text(json.dumps({
         "format": "triaevum_macos_development_bundle_v1", "architecture": "arm64",
-        "upstream_release": "v0.6.0-alpha.2", "upstream_commit": "9587e59",
+                       "upstream_release": "v0.6.0-alpha.2b", "upstream_commit": "57c9cca",
         "title_manifest_sha256": hashlib.sha256(
             (build / "translated-title-alpha2/TITLE_SOURCE_MANIFEST.json").read_bytes()
         ).hexdigest(),
-        "minimum_macos": minimum, "source_commit": run("git", "rev-parse", "HEAD"),
+        "minimum_macos": minimum, "source_commit": source_commit,
         "source_dirty": bool(run("git", "status", "--porcelain")),
         "libraries": inventory}, indent=2) + "\n")
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)
     subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True)
+    _write_release_manifest(app, version="0.6.0-alpha.2b-macos-candidate", source_commit=source_commit)
+    audit = audit_release(app)
+    if not audit.ok:
+        raise ValueError("macOS application failed shared release audit:\n" + "\n".join(audit.errors))
     print(app)
     return 0
 

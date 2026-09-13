@@ -84,8 +84,7 @@ final class Launcher: NSObject, NSApplicationDelegate {
                   var arguments = document["arguments"] as? [String] else {
                 throw NSError(domain: "TriAevum", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid launch profile; import the ROM again."])
             }
-            for (key, path) in [("--title-plugin", runtime.appendingPathComponent("triaevum_title_aot.dylib").path),
-                                ("--resource-root", runtime.appendingPathComponent("resources").path)] {
+            for (key, path) in [("--resource-root", runtime.appendingPathComponent("resources").path)] {
                 guard let index = arguments.firstIndex(of: key), index + 1 < arguments.count else {
                     throw NSError(domain: "TriAevum", code: 1, userInfo: [NSLocalizedDescriptionKey: "Invalid launch profile; import the ROM again."])
                 }
@@ -114,6 +113,8 @@ final class Launcher: NSObject, NSApplicationDelegate {
         task.arguments = arguments
         task.currentDirectoryURL = data
         var environment = ProcessInfo.processInfo.environment
+        environment["TRIAEVUM_INSTALLATION_ROOT"] = runtime.path
+        environment["TRIAEVUM_ACTIVATION_ROOT"] = data.path
         environment["SDL_VULKAN_LIBRARY"] = runtime.appendingPathComponent("lib/libvulkan.1.dylib").path
         environment["VK_DRIVER_FILES"] = runtime.appendingPathComponent("lib/MoltenVK_icd.json").path
         task.environment = environment

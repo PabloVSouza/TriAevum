@@ -97,6 +97,46 @@ Hosted CI does not run the Shadow2D GPU probe or game performance tests. Continu
 those checks on a physical Mac with the user's ROM and keep ROMs and ROM-derived
 captures out of CI artifacts.
 
+## Shared-contract status
+
+The Mac app is an audited **candidate**, not a separately maintained release
+format. Its packaging records every app file in the common release manifest and
+runs the common allowlist, catalog, source-provenance and donor-notice audit.
+The app carries the current alpha.2b qualified ROM recipes and their paired
+translated-title/build source archives. `macos_precompiled_catalog.py` changes
+only the host-artifact records after arm64 Mach-O and title-ABI checks; it does
+not reconstruct a ROM contract from alpha.2 plus alpha.1c files.
+
+`macos_forge.py` is now only an AppKit path adapter. It sets the packaged
+runtime and writable Application Support locations, then calls the same Forge
+ROM verification, input adaptation, private-module activation, update and
+shader-preparation flow used by the desktop installers. The launch profile uses
+the activated private title copy; the launcher no longer replaces it with a
+bundle-local plugin on every run.
+
+Portable PICA and renderer-pass shaders are prepared through that shared flow.
+The current Mac renderer is direct Vulkan through MoltenVK with NRI, CACAO and
+SSSR disabled, and it intentionally has no `device_pipeline_preparation`
+catalog record: the NRI-only headless pipeline helper cannot prewarm this
+backend. Forge therefore reports no device pipeline prewarm rather than
+claiming that portable shader presence is a GPU-pipeline cache. Driver and
+pipeline caches remain private to the Mac installation.
+
+The asynchronous grass admission is explicitly Mac-scoped. A scene can appear
+before all immutable grass placements finish, so dense grass may pop in over
+the next frames in exchange for avoiding a main-thread stall. The existing
+`oot3d_grass_async_placement_builder_tests` cover the pending-result and
+completed-result reuse states; this path is not claimed visually equivalent to
+the synchronous renderer policy. The shared presentation pacer keeps its
+existing 250 ms recoverable-debt policy in this branch. Any pacing-policy change
+needs its own review with Windows/Linux x1, x2 and x3 measurements.
+
+Mac lifecycle validation must be run on-device after every runtime update:
+launch a prepared title, minimize and restore it, switch fullscreen on and off,
+then repeat those transitions while a window is being resized. The current
+baseline includes alpha.2c's acquired-frame/fullscreen lifecycle fix; CI can
+compile and contract-test it but cannot substitute for these macOS transitions.
+
 ## Reproduce the development probe
 
 Install Xcode Command Line Tools (or Xcode) and Homebrew, then:

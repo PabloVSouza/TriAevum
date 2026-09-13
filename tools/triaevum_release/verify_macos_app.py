@@ -35,7 +35,7 @@ def verify(app: Path) -> dict:
         runtime = moved / "Contents/Resources/runtime"
         binaries = [moved / "Contents/MacOS/TriAevum", runtime / "TriAevum",
                     runtime / "triaevum_title_aot.dylib",
-                    runtime / "oot3d_native_pica_aot_compiler",
+                    runtime / "forge/oot3d_native_pica_aot_compiler",
                     moved / "Contents/Resources/forge/TriAevumForge"]
         binaries.extend(sorted((runtime / "lib").glob("*.dylib")))
         for binary in binaries:

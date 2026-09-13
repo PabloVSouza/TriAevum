@@ -32,6 +32,7 @@ cmake --build "${build_dir}/title-alpha2" --parallel "${CMAKE_BUILD_PARALLEL_LEV
     --specpath "${build_dir}" --paths "${repo_root}" \
     --paths "${repo_root}/tools/oot3d/native_a32_runtime/upstream/src" \
     --paths "${repo_root}/tools/oot3d/oot3d_asset_tool/src" --collect-submodules oot3d_pack \
+    --hidden-import tools.triaevum_release.forge_gui \
     --add-data "${repo_root}/config/topscreen_ui.example.json:config" \
     tools/triaevum_release/macos_forge.py
 "${python_bin}" -m tools.triaevum_release.package_macos --build "${build_dir}" \
