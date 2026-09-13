@@ -32,9 +32,11 @@ def bundle_libraries(runtime: Path) -> list[dict]:
     molten = Path(run("brew", "--prefix", "molten-vk")) / "lib/libMoltenVK.dylib"
     pending = [(runtime / "TriAevum", runtime / "TriAevum"),
                (runtime / "triaevum_title_aot.dylib", runtime / "triaevum_title_aot.dylib")]
-    compiler = runtime / "forge/oot3d_native_pica_aot_compiler"
-    if compiler.exists():
-        pending.append((compiler, compiler))
+    for helper_name in ("oot3d_native_pica_aot_compiler",
+                        "oot3d_native_nri_pipeline_prepare"):
+        helper = runtime / "forge" / helper_name
+        if helper.exists():
+            pending.append((helper, helper))
     copied: dict[str, Path] = {}
 
     def copy(source: Path) -> Path:
@@ -105,6 +107,7 @@ def _release_role(relative: str) -> str:
     if path == "TriAevum": return "runtime_executable"
     if path == "forge/oot3d_game_module.dylib": return "forge_runtime_module"
     if path == "forge/oot3d_native_pica_aot_compiler": return "shader_preparation_tool"
+    if path == "forge/oot3d_native_nri_pipeline_prepare": return "shader_preparation_tool"
     if path == "recipes/precompiled-titles.json": return "precompiled_catalog"
     if path.startswith("recipes/adapters/"): return "input_copy_adapter"
     if path.startswith("recipes/"): return "revision_recipe"
@@ -161,11 +164,11 @@ def main() -> int:
     shutil.copy2(build / "TriAevum", runtime / "TriAevum")
     shutil.copy2(args.title, runtime / "triaevum_title_aot.dylib")
     _copy(build / "oot3d_native_pica_aot_compiler", runtime / "forge/oot3d_native_pica_aot_compiler")
+    _copy(build / "nri-pipeline/triaevum_nri_pipeline_prepare",
+          runtime / "forge/oot3d_native_nri_pipeline_prepare")
     shutil.copytree(build / "installation/recipes", runtime / "recipes")
     shutil.copytree(build / "installation/resources", runtime / "resources")
     shutil.copytree(build / "installation/forge/shader-corpus", runtime / "forge/shader-corpus")
-    for path in (runtime / "forge/shader-corpus").glob("pipelines-*.json"):
-        path.unlink()
     shutil.copytree(build / "forge-dist/TriAevumForge", resources / "forge")
     reference = build / "qualified-inputs"
     if not reference.is_dir():
@@ -186,7 +189,9 @@ def main() -> int:
     create_source_archive(root, build / "macos-runtime-source.zip", source_commit=source_commit)
     _copy(build / "macos-runtime-source.zip", runtime / "source/TriAevum-source.zip")
     create_catalog(reference, runtime, plugin_path, source_commit=source_commit,
-                   shader_compiler=runtime / "forge/oot3d_native_pica_aot_compiler")
+                   shader_compiler=runtime / "forge/oot3d_native_pica_aot_compiler",
+                   pipeline_helper=runtime / "forge/oot3d_native_nri_pipeline_prepare",
+                   pipeline_manifests=sorted((runtime / "forge/shader-corpus").glob("pipelines-*.json")))
     minimum = run("sw_vers", "-productVersion")
     with (contents / "Info.plist").open("wb") as stream:
         plistlib.dump({"CFBundleName": "TriAevum", "CFBundleDisplayName": "TriAevum",

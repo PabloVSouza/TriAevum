@@ -22,6 +22,12 @@ python_bin=${build_dir}/venv/bin/python
 "${python_bin}" -m pip install capstone pycryptodome zstandard certifi pyinstaller
 "${python_bin}" -m tools.triaevum_release.prepare_macos_inputs --build "${build_dir}"
 "${script_dir}/build.sh" runtime "${build_dir}"
+cmake -S tools/renderer/pipeline_prepare -B "${build_dir}/nri-pipeline" -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-$(sw_vers -productVersion)}" \
+    -DTRIAEVUM_NRI_SOURCE_DIR="${build_dir}/_deps/nri-src"
+cmake --build "${build_dir}/nri-pipeline" --target triaevum_nri_pipeline_prepare \
+    --parallel "${CMAKE_BUILD_PARALLEL_LEVEL:-6}"
 cmake -S tools/triaevum_release/macos_title -B "${build_dir}/title-alpha2" -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_OSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-$(sw_vers -productVersion)}" \

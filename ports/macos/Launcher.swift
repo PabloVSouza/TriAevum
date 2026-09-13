@@ -117,6 +117,10 @@ final class Launcher: NSObject, NSApplicationDelegate {
         environment["TRIAEVUM_ACTIVATION_ROOT"] = data.path
         environment["SDL_VULKAN_LIBRARY"] = runtime.appendingPathComponent("lib/libvulkan.1.dylib").path
         environment["VK_DRIVER_FILES"] = runtime.appendingPathComponent("lib/MoltenVK_icd.json").path
+        let libraryDirectory = runtime.appendingPathComponent("lib").path
+        let inheritedLibraryPath = environment["DYLD_LIBRARY_PATH"]
+        environment["DYLD_LIBRARY_PATH"] = libraryDirectory +
+            (inheritedLibraryPath.map { ":" + $0 } ?? "")
         task.environment = environment
         let pipe = Pipe()
         task.standardOutput = pipe

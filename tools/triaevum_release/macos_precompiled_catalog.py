@@ -18,6 +18,7 @@ from .precompiled_titles import CATALOG, checked_file, load_catalog
 from .product_contract import query_product
 from .release_platform import MACOS, host_platform
 from .shader_release_layout import bind_renderer_compiler
+from .shader_corpus_layout import bind_shader_corpus
 
 
 def require_arm64_macho(path: Path, *, executable: bool = False) -> None:
@@ -47,7 +48,8 @@ def rebind_translated_source(source: Path, plugin: Path) -> None:
 
 
 def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
-                   source_commit: str, shader_compiler: Path) -> dict:
+                   source_commit: str, shader_compiler: Path,
+                   pipeline_helper: Path, pipeline_manifests: list[Path]) -> dict:
     if host_platform() != MACOS:
         raise ValueError("macOS catalog qualification must run on Apple Silicon macOS")
     if len(source_commit) != 40 or any(c not in "0123456789abcdef" for c in source_commit):
@@ -55,7 +57,10 @@ def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
     reference = load_catalog(reference_root)
     runtime = installation / "TriAevum"
     native = installation / "forge/oot3d_game_module.dylib"
-    for path, executable in ((runtime, True), (native, False), (plugin, False), (shader_compiler, True)):
+    if not 1 <= len(pipeline_manifests) <= 64:
+        raise ValueError("Mac NRI pipeline preparation requires 1 to 64 manifests")
+    for path, executable in ((runtime, True), (native, False), (plugin, False),
+                             (shader_compiler, True), (pipeline_helper, True)):
         require_arm64_macho(path, executable=executable)
     relative_plugin = plugin.resolve().relative_to(installation.resolve()).as_posix()
     if not relative_plugin.startswith("titles/") or plugin.name != MACOS.title_module:
@@ -86,15 +91,14 @@ def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
                                     "translated_source_sha256": sha256_file(archive_path),
                                     "build_target": "tools/triaevum_release/macos_title"})
     result, _ = bind_renderer_compiler(result, shader_compiler, ())
-    # MoltenVK uses the direct Vulkan bootstrap. There is no NRI device-pipeline
-    # helper in this bundle; retain an explicit unsupported receipt contract.
+    portable_pack = installation / "forge/shader-corpus/portable.o3ps"
+    result, _ = bind_shader_corpus(result, portable_pack, pipeline_manifests,
+                                   pipeline_helper)
     for item in result["titles"]:
-        item["device_pipeline_preparation"] = {
-            "format": "triaevum_device_pipeline_preparation_v1",
-            "backend": "direct_vulkan_no_nri_preparer",
-        }
-        for record in [item["renderer_shader_preparation"]["compiler"]]:
+        for record in [item["renderer_shader_preparation"]["compiler"],
+                       item["device_pipeline_preparation"]["helper"],
+                       *item["device_pipeline_preparation"]["manifests"]]:
             checked_file(installation, record)
-    query_product(runtime, plugin=plugin, renderer="vulkan")
+    query_product(runtime, plugin=plugin, renderer="nri")
     atomic_write_json(installation / CATALOG, result)
     return result

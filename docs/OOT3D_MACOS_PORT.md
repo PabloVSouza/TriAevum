@@ -11,12 +11,11 @@ nonblocking grass admission remain.
 
 The title dylib is rebuilt from alpha 2's translated C++ archive, with each
 source hash checked against its manifest. The app bundles the release's 1,039
-portable shader modules and the native renderer-pass shader compiler. Forge
-prepares these shaders into installation-private storage and detects the ROM's
-available languages. Existing installs adopt the bundled portable shader pack
-when launched through Play; learned device pipelines remain local. NRI-only
-headless GPU pipeline preparation is not enabled on this Vulkan/MoltenVK build.
-Missing shader variants are still compiled and cached during play.
+portable shader modules, the renderer-pass shader compiler and the shared NRI
+pipeline helper. Forge prepares these shaders, then creates the observed NRI
+pipelines on the local GPU into an installation-private cache before activation.
+Existing installs adopt the bundled portable shader pack when launched through
+Play; device caches remain local and are validated against the GPU and driver.
 
 The published alpha 2 Windows bundle only lists EUR recipes. The Mac input
 preparation step retains alpha 1c's verified USA adapter and content-family
@@ -115,14 +114,19 @@ the activated private title copy; the launcher no longer replaces it with a
 bundle-local plugin on every run.
 
 Portable PICA and renderer-pass shaders are prepared through that shared flow.
-The current Mac renderer is direct Vulkan through MoltenVK with NRI, CACAO and
-SSSR disabled. Its catalog carries an explicit `direct_vulkan_no_nri_preparer`
-device-pipeline contract: the NRI-only headless helper cannot prewarm this
-backend. Forge writes an `unsupported_backend` receipt rather than reporting a
-failed job or claiming that portable shader presence is a GPU-pipeline cache.
-Driver and pipeline caches remain private to the Mac installation. Supporting
-this step requires an NRI-compatible Mac renderer and is outside this
-experimental bootstrap.
+The current Mac renderer uses the shared NRI Vulkan path through MoltenVK. Its
+catalog binds the audited `oot3d_native_nri_pipeline_prepare` helper and the
+observed pipeline manifests, so Forge performs actual device-pipeline creation
+and writes a complete or failed receipt rather than treating portable shader
+presence as a GPU cache. Driver and pipeline caches remain private to the Mac
+installation. The helper creates its own portability-enumerated Vulkan instance
+and uses the bundled loader and MoltenVK ICD, matching the app's GPU path.
+
+CACAO and FidelityFX SSSR remain disabled in this Mac configuration. CACAO has
+not been validated against this MoltenVK/NRI combination; SSSR additionally
+requires a qualified non-Windows FidelityFX shader bundle, which this release
+does not contain. They are explicit capability limits, not a fallback to the
+old direct renderer.
 
 The asynchronous grass admission is explicitly Mac-scoped. A scene can appear
 before all immutable grass placements finish, so dense grass may pop in over
@@ -153,8 +157,8 @@ so the shared settings transaction and rollback contract remain accurate.
 
 This verifies the alpha.2c acquired-frame guard during a real minimize/restore
 cycle and verifies the F1-owned settings transaction. It does not claim that
-macOS exposes a separate exclusive-display implementation or that the direct
-Vulkan/MoltenVK renderer has NRI pipeline-prewarming parity.
+macOS exposes a separate exclusive-display implementation. The NRI pipeline
+prewarmer is separately validated on this Apple Silicon GPU before activation.
 
 ## Reproduce the development probe
 
@@ -180,10 +184,10 @@ dependencies built for an older OS. Intel and universal builds, minimum OS
 compatibility and distribution signing have not been verified. The local app
 bundle has been verified with ad-hoc signing.
 
-NRI, CACAO and SSSR are disabled for this first development path. Vulkan runs
-through MoltenVK over Metal; this does not establish parity for all game
-shaders or Windows graphics enhancements. The inherited Fast3D Metal backend
-is compiled but is not the backend qualified by this probe.
+NRI Vulkan runs through MoltenVK over Metal. CACAO and SSSR remain disabled as
+documented above; this does not establish parity for every graphics effect or
+Windows-specific enhancement. The inherited Fast3D Metal backend is compiled
+but is not the backend qualified by this probe.
 
 ## Changes and evidence (2026-09-09)
 
