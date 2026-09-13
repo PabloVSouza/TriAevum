@@ -168,6 +168,11 @@ def runtime_renderer() -> str:
     return "vulkan" if host_platform().target == "aarch64-apple-darwin" else "nri"
 
 
+def package_runtime_path(platform) -> str:
+    """Resolve from Forge's runtime directory, not the outer Mac .app root."""
+    return "TriAevum" if platform.target == "aarch64-apple-darwin" else platform.runtime
+
+
 class HashCache:
     def __init__(self, path: Path, *, enabled: bool = True) -> None:
         self.path = path
@@ -941,7 +946,7 @@ def publish_private_runtime(
     destination = installation / "private-plugins" / plugin_hash / platform.title_module
     profile_path = launch_profile.expanduser().resolve()
     private_root = data_root.expanduser().resolve()
-    product_receipt = query_product(package / platform.runtime, renderer=runtime_renderer())
+    product_receipt = query_product(package / package_runtime_path(platform), renderer=runtime_renderer())
     destination.parent.mkdir(parents=True, exist_ok=True)
     profile_path.parent.mkdir(parents=True, exist_ok=True)
     private_root.mkdir(parents=True, exist_ok=True)
@@ -1030,7 +1035,7 @@ def publish_private_runtime(
             temporary.unlink(missing_ok=True)
     # Query the exact immutable generation in a short-lived process before the
     # single launch-profile replacement makes it visible to direct launches.
-    query_product(package / platform.runtime, plugin=destination, renderer=runtime_renderer())
+    query_product(package / package_runtime_path(platform), plugin=destination, renderer=runtime_renderer())
     atomic_write_json(profile_path, profile)
     prepared.state["runtime"] = {
         "status": "ready",
