@@ -25,7 +25,8 @@ def require_arm64_macho(path: Path, *, executable: bool = False) -> None:
     header = path.read_bytes()[:32]
     if len(header) < 28 or header[:4] != b"\xcf\xfa\xed\xfe":
         raise ValueError(f"Expected arm64 Mach-O artifact: {path}")
-    cpu_type, file_type = struct.unpack_from("<II", header, 4)
+    cpu_type = struct.unpack_from("<I", header, 4)[0]
+    file_type = struct.unpack_from("<I", header, 12)[0]
     if cpu_type != 0x0100000C or (executable and file_type != 2) or (not executable and file_type not in (2, 6, 8)):
         raise ValueError(f"Expected {'executable ' if executable else ''}arm64 Mach-O artifact: {path}")
 
