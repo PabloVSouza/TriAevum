@@ -206,8 +206,11 @@ def main() -> int:
         "minimum_macos": minimum, "source_commit": source_commit,
         "source_dirty": bool(run("git", "status", "--porcelain")),
         "libraries": inventory}, indent=2) + "\n")
-    _write_release_manifest(app, version="0.6.0-alpha.2b-macos-candidate", source_commit=source_commit)
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)
+    # Sign nested executables before recording their hashes. The final root-only
+    # signature seals the manifest without rewriting those inventory entries.
+    _write_release_manifest(app, version="0.6.0-alpha.2b-macos-candidate", source_commit=source_commit)
+    subprocess.run(["codesign", "--force", "--sign", "-", str(app)], check=True)
     subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True)
     audit = audit_release(app)
     if not audit.ok:
