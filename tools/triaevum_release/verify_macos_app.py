@@ -36,6 +36,7 @@ def verify(app: Path) -> dict:
         binaries = [moved / "Contents/MacOS/TriAevum", runtime / "TriAevum",
                     runtime / "triaevum_title_aot.dylib",
                     runtime / "forge/oot3d_native_pica_aot_compiler",
+                    runtime / "forge/oot3d_native_nri_pipeline_prepare",
                     moved / "Contents/Resources/forge/TriAevumForge"]
         binaries.extend(sorted((runtime / "lib").glob("*.dylib")))
         for binary in binaries:
@@ -62,7 +63,7 @@ def verify(app: Path) -> dict:
             raise ValueError("Missing portable shader corpus")
         product = json.loads(run(str(runtime / "TriAevum"), "--verify-title-plugin",
                                  str(runtime / "triaevum_title_aot.dylib"), cwd=runtime))
-        validate_product_info(product, metadata["source_commit"], renderer="vulkan")
+        validate_product_info(product, metadata["source_commit"], renderer="nri")
         if product.get("private_title_loaded") is not True:
             raise ValueError("Packaged alpha 2 title failed ABI preflight")
         run(str(moved / "Contents/Resources/forge/TriAevumForge"), "--help", cwd=runtime)

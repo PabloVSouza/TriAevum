@@ -63,7 +63,7 @@ jobs:
       - name: Validate runtime product information
         run: |
           build-macos/TriAevum --product-info > build-macos/product-info.json
-          python -c 'import json; from pathlib import Path; from tools.triaevum_release.product_contract import validate_product_info; validate_product_info(json.loads(Path("build-macos/product-info.json").read_text()), renderer="vulkan")'
+          python -c 'import json; from pathlib import Path; from tools.triaevum_release.product_contract import validate_product_info; validate_product_info(json.loads(Path("build-macos/product-info.json").read_text()), renderer="nri")'
       - name: Build and test public UI consumers
         run: |
           cmake -S tools/oot3d/ui_contract -B build-macos/ui-tests -G Ninja -DCMAKE_BUILD_TYPE=Release
