@@ -162,6 +162,8 @@ def main() -> int:
     shutil.copytree(build / "installation/recipes", runtime / "recipes")
     shutil.copytree(build / "installation/resources", runtime / "resources")
     shutil.copytree(build / "installation/forge/shader-corpus", runtime / "forge/shader-corpus")
+    for path in (runtime / "forge/shader-corpus").glob("pipelines-*.json"):
+        path.unlink()
     shutil.copytree(build / "forge-dist/TriAevumForge", resources / "forge")
     reference = build / "qualified-inputs"
     if not reference.is_dir():

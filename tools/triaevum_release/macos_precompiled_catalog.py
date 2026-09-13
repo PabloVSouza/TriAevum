@@ -65,10 +65,13 @@ def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
                                     "translated_source_sha256": sha256_file(archive_path),
                                     "build_target": "tools/triaevum_release/macos_title"})
     result, _ = bind_renderer_compiler(result, shader_compiler, ())
-    # MoltenVK uses the direct Vulkan bootstrap.  There is no NRI device-pipeline
-    # helper in this bundle, so intentionally omit that optional catalog contract.
+    # MoltenVK uses the direct Vulkan bootstrap. There is no NRI device-pipeline
+    # helper in this bundle; retain an explicit unsupported receipt contract.
     for item in result["titles"]:
-        item.pop("device_pipeline_preparation", None)
+        item["device_pipeline_preparation"] = {
+            "format": "triaevum_device_pipeline_preparation_v1",
+            "backend": "direct_vulkan_no_nri_preparer",
+        }
         for record in [item["renderer_shader_preparation"]["compiler"]]:
             checked_file(installation, record)
     query_product(runtime, plugin=plugin, renderer="vulkan")
