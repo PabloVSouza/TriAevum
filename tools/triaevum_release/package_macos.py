@@ -126,6 +126,8 @@ def _write_release_manifest(app: Path, *, version: str, source_commit: str) -> N
     files = []
     for path in sorted((item for item in app.rglob("*") if item.is_file()), key=lambda item: item.as_posix()):
         relative = path.relative_to(app).as_posix()
+        if relative == "Contents/_CodeSignature/CodeResources":
+            continue
         files.append({"path": relative, "role": _release_role(relative),
                       "bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
     atomic_write_json(app / "Contents/Resources/release-manifest.json", {
