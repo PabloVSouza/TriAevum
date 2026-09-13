@@ -163,7 +163,12 @@ def audit_release(
 ) -> ReleaseAuditResult:
     errors: list[str] = []
     root = package_root.resolve()
-    manifest_path = (manifest_path or root / DEFAULT_MANIFEST_NAME).resolve()
+    if manifest_path is None:
+        manifest_path = root / DEFAULT_MANIFEST_NAME
+        macos_manifest = root / "Contents/Resources" / DEFAULT_MANIFEST_NAME
+        if not manifest_path.is_file() and macos_manifest.is_file():
+            manifest_path = macos_manifest
+    manifest_path = manifest_path.resolve()
 
     def reject(message: str) -> None:
         if message not in errors:

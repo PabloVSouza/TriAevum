@@ -128,7 +128,7 @@ def _write_release_manifest(app: Path, *, version: str, source_commit: str) -> N
         relative = path.relative_to(app).as_posix()
         files.append({"path": relative, "role": _release_role(relative),
                       "bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()})
-    atomic_write_json(app / "release-manifest.json", {
+    atomic_write_json(app / "Contents/Resources/release-manifest.json", {
         "format": "triaevum_public_release_manifest_v1",
         "release": {"name": "TriAevum", "version": version,
                     "target": "aarch64-apple-darwin", "source_commit": source_commit,
@@ -206,9 +206,9 @@ def main() -> int:
         "minimum_macos": minimum, "source_commit": source_commit,
         "source_dirty": bool(run("git", "status", "--porcelain")),
         "libraries": inventory}, indent=2) + "\n")
+    _write_release_manifest(app, version="0.6.0-alpha.2b-macos-candidate", source_commit=source_commit)
     subprocess.run(["codesign", "--force", "--deep", "--sign", "-", str(app)], check=True)
     subprocess.run(["codesign", "--verify", "--deep", "--strict", str(app)], check=True)
-    _write_release_manifest(app, version="0.6.0-alpha.2b-macos-candidate", source_commit=source_commit)
     audit = audit_release(app)
     if not audit.ok:
         raise ValueError("macOS application failed shared release audit:\n" + "\n".join(audit.errors))
