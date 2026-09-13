@@ -32,7 +32,7 @@ def bundle_libraries(runtime: Path) -> list[dict]:
     molten = Path(run("brew", "--prefix", "molten-vk")) / "lib/libMoltenVK.dylib"
     pending = [(runtime / "TriAevum", runtime / "TriAevum"),
                (runtime / "triaevum_title_aot.dylib", runtime / "triaevum_title_aot.dylib")]
-    compiler = runtime / "oot3d_native_pica_aot_compiler"
+    compiler = runtime / "forge/oot3d_native_pica_aot_compiler"
     if compiler.exists():
         pending.append((compiler, compiler))
     copied: dict[str, Path] = {}
