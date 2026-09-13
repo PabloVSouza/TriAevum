@@ -139,6 +139,23 @@ then repeat those transitions while a window is being resized. The current
 baseline includes alpha.2c's acquired-frame/fullscreen lifecycle fix; CI can
 compile and contract-test it but cannot substitute for these macOS transitions.
 
+### Alpha.2c Apple Silicon validation
+
+The alpha.2c baseline was rebuilt and run with the prepared USA title on an
+Apple Silicon Mac. The game window was minimized for three seconds and restored
+through the macOS accessibility API without terminating the process. The
+on-device display probe then completed 3,983 sustained frames across windowed,
+borderless and native-fullscreen settings: 8 settings applications, 1 expected
+unconfirmed-settings rollback, and 0 application failures. macOS represents
+both borderless and exclusive requests with its native fullscreen space; the
+SDL adapter retains the requested flavor during Cocoa's asynchronous transition
+so the shared settings transaction and rollback contract remain accurate.
+
+This verifies the alpha.2c acquired-frame guard during a real minimize/restore
+cycle and verifies the F1-owned settings transaction. It does not claim that
+macOS exposes a separate exclusive-display implementation or that the direct
+Vulkan/MoltenVK renderer has NRI pipeline-prewarming parity.
+
 ## Reproduce the development probe
 
 Install Xcode Command Line Tools (or Xcode) and Homebrew, then:
