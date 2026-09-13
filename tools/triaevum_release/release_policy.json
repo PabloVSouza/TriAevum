@@ -67,7 +67,7 @@
         "runtime_executable": ["Contents/Resources/runtime/TriAevum"],
         "forge_executable": ["Contents/Resources/forge/TriAevumForge"],
         "forge_runtime_module": ["Contents/Resources/runtime/forge/oot3d_game_module.dylib"],
-        "shader_preparation_tool": ["Contents/Resources/runtime/forge/oot3d_native_pica_aot_compiler"],
+        "shader_preparation_tool": ["Contents/Resources/runtime/forge/oot3d_native_pica_aot_compiler", "Contents/Resources/runtime/forge/oot3d_native_nri_pipeline_prepare"],
         "runtime_library": ["Contents/Resources/runtime/*.dylib", "Contents/Resources/runtime/lib/*.dylib"],
         "forge_frozen_resource": ["Contents/Resources/forge/_internal/*", "Contents/Resources/forge/_internal/**/*"],
         "precompiled_title": ["Contents/Resources/runtime/titles/*/triaevum_title_aot.dylib"],
