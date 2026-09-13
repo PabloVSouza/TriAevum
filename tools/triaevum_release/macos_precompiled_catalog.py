@@ -31,6 +31,21 @@ def require_arm64_macho(path: Path, *, executable: bool = False) -> None:
         raise ValueError(f"Expected {'executable ' if executable else ''}arm64 Mach-O artifact: {path}")
 
 
+def rebind_translated_source(source: Path, plugin: Path) -> None:
+    """Keep the source inventory while binding its build receipt to the Mac dylib."""
+    temporary = source.with_suffix(".tmp")
+    with zipfile.ZipFile(source) as original, zipfile.ZipFile(temporary, "w", zipfile.ZIP_DEFLATED) as replacement:
+        for entry in original.infolist():
+            payload = original.read(entry.filename)
+            if entry.filename == "TITLE_SOURCE_MANIFEST.json":
+                metadata = json.loads(payload)
+                metadata["build"]["plugin_sha256"] = sha256_file(plugin)
+                metadata["build"]["plugin_bytes"] = plugin.stat().st_size
+                payload = (json.dumps(metadata, indent=2) + "\n").encode()
+            replacement.writestr(entry, payload)
+    temporary.replace(source)
+
+
 def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
                    source_commit: str, shader_compiler: Path) -> dict:
     if host_platform() != MACOS:
@@ -60,6 +75,12 @@ def create_catalog(reference_root: Path, installation: Path, plugin: Path, *,
                 or not files or build.get("code_sha256") != item["inputs"]["code"]["sha256"]
                 or build.get("translator_identity_sha256") != item["translator_identity_sha256"]):
             raise ValueError("Reference title has no matching translated-source inventory")
+        staged_source = installation / sources[0]["path"]
+        rebind_translated_source(staged_source, plugin)
+        item["sources"] = [
+            artifact(staged_source, sources[0]["path"]),
+            *[source for source in item["sources"] if source is not sources[0]],
+        ]
         item.update(target=MACOS.target, plugin=artifact(plugin, relative_plugin),
                     platform_build={"source_commit": source_commit,
                                     "translated_source_sha256": sha256_file(archive_path),
