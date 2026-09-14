@@ -6,14 +6,8 @@
 namespace Ship {
 
 CoreAudioAudioPlayer::CoreAudioAudioPlayer(AudioSettings settings)
-    : AudioPlayer(settings),
-      mAudioUnit(nullptr),
-      mNumChannels(2),
-      mRingBuffer(nullptr),
-      mRingBufferSize(0),
-      mRingBufferReadPos(0),
-      mRingBufferWritePos(0),
-      mInitialized(false) {
+    : AudioPlayer(settings), mAudioUnit(nullptr), mNumChannels(2), mRingBuffer(nullptr), mRingBufferSize(0),
+      mRingBufferReadPos(0), mRingBufferWritePos(0), mInitialized(false) {
     pthread_mutex_init(&mMutex, NULL);
 }
 

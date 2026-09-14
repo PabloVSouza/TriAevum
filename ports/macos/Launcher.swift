@@ -166,8 +166,24 @@ final class Launcher: NSObject, NSApplicationDelegate {
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if process?.isRunning == true {
             window.deminiaturize(nil)
-            status.stringValue = "Close the game or wait for setup to finish before quitting."
-            return .terminateCancel
+            status.stringValue = "Closing the game…"
+            let child = process!
+            child.terminationHandler = { [weak self] _ in
+                DispatchQueue.main.async {
+                    self?.process = nil
+                    NSApplication.shared.reply(toApplicationShouldTerminate: true)
+                }
+            }
+            child.terminate()
+            // A renderer can be inside a driver call while the app is quitting.
+            // Do not leave the launcher stuck indefinitely in that state.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) {
+                if child.isRunning {
+                    child.interrupt()
+                    child.terminate()
+                }
+            }
+            return .terminateLater
         }
         return .terminateNow
     }
